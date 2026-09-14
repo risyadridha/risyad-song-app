@@ -208,7 +208,7 @@ const UI = (function () {
   function updateTrackUI(state) {
     const s = state.current;
     const title = s ? s.title : 'Pilih lagu untuk diputar';
-    const artist = s ? s.artist + ' · ' + s.album : 'Kirana Player';
+    const artist = s ? s.artist + ' · ' + s.album : 'Risyad Player';
     const cover = s ? s.cover : 'assets/covers/song-1.jpg';
     if ($('pCover')) $('pCover').src = cover;
     if ($('mCover')) $('mCover').src = cover;
@@ -217,7 +217,7 @@ const UI = (function () {
     if ($('mTitle')) $('mTitle').textContent = title;
     if ($('fTitle')) $('fTitle').textContent = title;
     if ($('pArtist')) $('pArtist').textContent = artist;
-    if ($('mArtist')) $('mArtist').textContent = s ? s.artist : 'Kirana';
+    if ($('mArtist')) $('mArtist').textContent = s ? s.artist : 'Risyad';
     if ($('fArtist')) $('fArtist').textContent = s ? s.artist + ' · ' + s.album : 'Kirana';
     syncPlayerLike();
     markActiveSong(state.currentId);
