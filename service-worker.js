@@ -4,8 +4,8 @@
  *  - Audio TIDAK di-cache saat install. Audio yang sudah pernah diputar
  *    di-cache on-demand dengan batas maksimal (MAX_AUDIO_CACHE).
  */
-const APP_CACHE = 'kirana-app-v2';
-const AUDIO_CACHE = 'kirana-audio-v1';
+const APP_CACHE = 'Risyad-app-v2';
+const AUDIO_CACHE = 'Risyad-audio-v1';
 const MAX_AUDIO_CACHE = 10;
 
 const APP_SHELL = [

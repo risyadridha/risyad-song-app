@@ -1,7 +1,7 @@
 {
-  "name": "Kirana — Music Player",
-  "short_name": "Kirana",
-  "description": "Music player web yang ringan, cepat, responsif, dan bisa di-install. Tanpa database, tanpa backend, tanpa login.",
+  "name": "Risyad — Music Player",
+  "short_name": "Risyad",
+  "description": "Music player web yang ringan, cepat, responsif, dan bisa di-install. tanpa login.",
   "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
