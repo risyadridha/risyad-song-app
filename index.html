@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Risyadddd — Music Player</title>
+  <meta name="description" content="Kirana adalah music player web yang ringan, cepat, dan bisa di-install. Tanpa database, tanpa backend, tanpa login." />
+  <meta name="theme-color" content="#141412" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Kirana" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Sidebar: logo + nav + library, tanpa card -->
+    <aside class="sidebar" aria-label="Navigasi utama">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26"><rect x="2" y="2" width="28" height="28" rx="8" fill="#D6A94E"/><circle cx="13.5" cy="19" r="4.2" fill="none" stroke="#141412" stroke-width="2"/><rect x="17" y="7" width="2.4" height="12" rx="1.2" fill="#141412"/><rect x="17" y="7" width="7" height="2.4" rx="1.2" fill="#141412"/></svg>
+        </span>
+        <span class="brand-text"><strong>RisyadSONG</strong></span>
+      </div>
+      <nav class="side-nav" aria-label="Menu">
+        <button class="nav-item is-active" data-page="home">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/></svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-item" data-page="search">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg>
+          <span>Search</span>
+        </button>
+        <button class="nav-item" data-page="liked">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20C7.5 16.5 4 13.3 4 9.3 4 6.8 6 5 8.2 5c1.5 0 2.9.8 3.8 2.1C12.9 5.8 14.3 5 15.8 5 18 5 20 6.8 20 9.3c0 4-3.5 7.2-8 10.7Z"/></svg>
+          <span>Liked</span>
+        </button>
+      </nav>
+      <p class="side-label">Library</p>
+      <nav class="side-nav" aria-label="Library">
+        <button class="nav-item" data-page="library">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 5v14M9.5 5v14M14 6l6 2.2v11.6L14 17.6z"/></svg>
+          <span>All songs</span>
+        </button>
+        <button class="nav-item" data-page="library" data-lib-jump="recent">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></svg>
+          <span>Recent</span>
+        </button>
+      </nav>
+      <p class="side-note">Offline-ready · No login</p>
+    </aside>
+
+    <!-- Content -->
+    <main class="main" id="main">
+      <div class="content" id="content">
+        <section class="page is-visible" id="page-home" aria-label="Home"></section>
+        <section class="page" id="page-search" aria-label="Search">
+          <h1 class="page-title">Search</h1>
+          <p class="page-sub">Cari dari koleksi lokal.</p>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg>
+            <input id="searchInput" type="search" placeholder="Judul, artis, atau album…" autocomplete="off" aria-label="Kolom pencarian" />
+            <button id="searchClear" class="text-btn hidden" aria-label="Hapus pencarian">Clear</button>
+          </div>
+          <div id="searchResults"></div>
+        </section>
+        <section class="page" id="page-liked" aria-label="Liked Songs"></section>
+        <section class="page" id="page-library" aria-label="Library"></section>
+      </div>
+    </main>
+
+    <!-- Bottom player: bagian dari aplikasi, bukan popup -->
+    <footer class="player" id="bottomPlayer" aria-label="Music player">
+      <div class="p-left">
+        <img id="pCover" src="assets/covers/song-1.jpg" alt="Cover" width="48" height="48" />
+        <div class="p-meta">
+          <strong id="pTitle">Pilih lagu untuk diputar</strong>
+          <span id="pArtist">Kirana Player</span>
+        </div>
+      </div>
+      <div class="p-center">
+        <div class="p-controls">
+          <button id="btnShuffle" class="ctl" aria-label="Shuffle" title="Shuffle">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h4l10 10h4"/><path d="M17 13.5 21 17l-4 3.5"/><path d="M3 17h4l2.5-2.5"/><path d="M13.5 9.5 17 7h4"/><path d="M17 3.5 21 7l-4 3.5"/></svg>
+          </button>
+          <button id="btnPrev" class="ctl" aria-label="Previous" title="Previous">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="5" y="6" width="2.4" height="12" rx="1"/><path d="M18 7.2v9.6L9.5 12z"/></svg>
+          </button>
+          <button id="btnPlay" class="play-btn" aria-label="Play / Pause" title="Play/Pause"></button>
+          <button id="btnNext" class="ctl" aria-label="Next" title="Next">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="16.6" y="6" width="2.4" height="12" rx="1"/><path d="M6 7.2v9.6L14.5 12z"/></svg>
+          </button>
+          <button id="btnRepeat" class="ctl" aria-label="Repeat" title="Repeat: off">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>
+            <sup id="repeatBadge"></sup>
+          </button>
+        </div>
+        <div class="p-progress">
+          <span id="curTime">0:00</span>
+          <input id="seekBar" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress lagu" />
+          <span id="durTime">0:00</span>
+        </div>
+      </div>
+      <div class="p-right">
+        <button id="btnMute" class="ctl" aria-label="Mute">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l4 3.5v-11L7 10z"/><path d="M15 9.5a4 4 0 0 1 0 5"/><path d="M17.5 7.5a7 7 0 0 1 0 9"/></svg>
+        </button>
+        <input id="volBar" type="range" min="0" max="100" value="90" aria-label="Volume" />
+        <button id="pLike" class="ctl" aria-label="Like">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20C7.5 16.5 4 13.3 4 9.3 4 6.8 6 5 8.2 5c1.5 0 2.9.8 3.8 2.1C12.9 5.8 14.3 5 15.8 5 18 5 20 6.8 20 9.3c0 4-3.5 7.2-8 10.7Z"/></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Mini player (mobile): cover + judul + play -->
+    <div class="mini-player" id="miniPlayer" role="button" tabindex="0" aria-label="Buka full player">
+      <img id="mCover" src="assets/covers/song-1.jpg" alt="Cover" width="40" height="40" />
+      <div class="m-meta"><strong id="mTitle">Pilih lagu</strong><span id="mArtist">Kirana</span></div>
+      <button id="mPlay" class="play-btn sm" aria-label="Play / Pause"></button>
+    </div>
+    <button id="mLike" class="hidden" aria-label="Like"></button>
+
+    <!-- Full player (mobile) -->
+    <div class="full-player" id="fullPlayer" aria-hidden="true">
+      <button class="ctl fp-close" id="fpClose" aria-label="Tutup full player">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <img id="fCover" src="assets/covers/song-1.jpg" alt="Cover besar" />
+      <div class="fp-meta">
+        <div class="fp-titles"><h2 id="fTitle">Pilih lagu</h2><p id="fArtist">Kirana</p></div>
+        <button id="fLike" class="ctl" aria-label="Like">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20C7.5 16.5 4 13.3 4 9.3 4 6.8 6 5 8.2 5c1.5 0 2.9.8 3.8 2.1C12.9 5.8 14.3 5 15.8 5 18 5 20 6.8 20 9.3c0 4-3.5 7.2-8 10.7Z"/></svg>
+        </button>
+      </div>
+      <div class="fp-progress">
+        <input id="fSeek" type="range" min="0" max="1000" value="0" aria-label="Progress lagu" />
+        <div class="fp-times"><span id="fCur">0:00</span><span id="fDur">0:00</span></div>
+      </div>
+      <div class="fp-controls">
+        <button id="fShuffle" class="ctl" aria-label="Shuffle">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h4l10 10h4"/><path d="M17 13.5 21 17l-4 3.5"/><path d="M3 17h4l2.5-2.5"/><path d="M13.5 9.5 17 7h4"/><path d="M17 3.5 21 7l-4 3.5"/></svg>
+        </button>
+        <button id="fPrev" class="ctl" aria-label="Previous">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="5" y="6" width="2.4" height="12" rx="1"/><path d="M18 7.2v9.6L9.5 12z"/></svg>
+        </button>
+        <button id="fPlay" class="play-btn lg" aria-label="Play / Pause"></button>
+        <button id="fNext" class="ctl" aria-label="Next">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="16.6" y="6" width="2.4" height="12" rx="1"/><path d="M6 7.2v9.6L14.5 12z"/></svg>
+        </button>
+        <button id="fRepeat" class="ctl" aria-label="Repeat">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>
+        </button>
+      </div>
+      <div class="fp-vol">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 10v4h3l4 3.5v-11L7 10z"/></svg>
+        <input id="fVol" type="range" min="0" max="100" value="90" aria-label="Volume" />
+        <button id="fMute" class="ctl" aria-label="Mute">Mute</button>
+      </div>
+    </div>
+
+    <!-- Bottom nav (mobile) -->
+    <nav class="bottom-nav" aria-label="Navigasi bawah">
+      <button class="nav-item is-active" data-page="home">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-page="search">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg>
+        <span>Search</span>
+      </button>
+      <button class="nav-item" data-page="liked">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20C7.5 16.5 4 13.3 4 9.3 4 6.8 6 5 8.2 5c1.5 0 2.9.8 3.8 2.1C12.9 5.8 14.3 5 15.8 5 18 5 20 6.8 20 9.3c0 4-3.5 7.2-8 10.7Z"/></svg>
+        <span>Likes</span>
+      </button>
+      <button class="nav-item" data-page="library">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 5v14M9.5 5v14M14 6l6 2.2v11.6L14 17.6z"/></svg>
+        <span>Library</span>
+      </button>
+    </nav>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="js/songs.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
