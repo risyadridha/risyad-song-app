@@ -1,23 +1,25 @@
-/* Kirana Music — player.js
+/* Risyad Music — player.js
  * Satu elemen audio saja (#audioPlayer). Tidak membuat Audio object baru.
- * Alur: pilih lagu -> ubah audio.src -> play.
+ * Hemat kuota: hanya muat audio yang diputar, tidak preload semua lagu/queue.
+ * Terintegrasi dengan QueueModule (antrean). Prioritas next: queue -> library/shuffle.
  */
 const Player = (function () {
   let audio = null;
-  let queue = [];
+  let library = [];
   let currentId = null;
   let isPlaying = false;
   let shuffle = false;
   let repeatMode = 'off'; // off | all | one
-  const listeners = { track: [], state: [], progress: [] };
+  const listeners = { track: [], state: [], progress: [], queue: [] };
 
   function init(audioEl, songList) {
     audio = audioEl;
-    queue = Array.isArray(songList) ? songList.slice() : [];
+    library = Array.isArray(songList) ? songList.slice() : [];
     shuffle = getShuffleState();
     repeatMode = getRepeatMode();
     const vol = getVolume();
     audio.volume = vol;
+    // Hemat kuota: metadata saja, bukan auto
     audio.preload = 'metadata';
 
     audio.addEventListener('loadedmetadata', () => emit('progress'));
@@ -31,8 +33,13 @@ const Player = (function () {
       isPlaying = false;
       emit('state');
     });
+    // Queue listener -> emit queue ke UI
+    if (typeof QueueModule !== 'undefined' && QueueModule.on) {
+      QueueModule.on(() => emit('queue'));
+    }
     emit('track');
     emit('state');
+    emit('queue');
   }
 
   function on(evt, fn) {
@@ -45,12 +52,28 @@ const Player = (function () {
     fns.forEach((fn) => { try { fn(snapshot); } catch (e) {} });
   }
 
-  function findById(id) {
-    return queue.find((s) => s.id === id) || null;
+  function resolveSong(id) {
+    if(typeof songMap!=='undefined' && songMap.has(String(id))) return songMap.get(String(id));
+    const all = typeof songs !== 'undefined' ? songs : library;
+    return all.find((s) => String(s.id) === String(id)) || null;
   }
 
   function current() {
-    return currentId === null ? null : findById(currentId);
+    return currentId === null ? null : resolveSong(currentId);
+  }
+
+  function getSongSrc(song) {
+    if (!song) return '';
+    // dukung struktur audio: {saver, normal, high} — pilih satu sesuai setting
+    if (song.audio && typeof song.audio === 'object') {
+      const q = typeof getAudioQuality === 'function' ? getAudioQuality() : 'normal';
+      if (q === 'saver' && song.audio.saver) return song.audio.saver;
+      if (q === 'high' && song.audio.high) return song.audio.high;
+      if (song.audio.normal) return song.audio.normal;
+      // fallback ke salah satu yang ada
+      return song.audio.saver || song.audio.high || song.src || '';
+    }
+    return song.src || '';
   }
 
   function getState() {
@@ -60,22 +83,35 @@ const Player = (function () {
       currentTime: audio ? audio.currentTime || 0 : 0,
       duration: audio && Number.isFinite(audio.duration) ? audio.duration : 0,
       volume: audio ? audio.volume : getVolume(),
-      muted: audio ? audio.muted : false
+      muted: audio ? audio.muted : false,
+      queue: typeof QueueModule !== 'undefined' ? QueueModule.getAll() : [],
+      queueSongs: typeof QueueModule !== 'undefined' ? QueueModule.toSongs() : []
     };
   }
 
   function load(id, autoplay) {
-    const song = findById(id);
+    const song = resolveSong(id);
     if (!song || !audio) return false;
-    const same = currentId === id;
-    currentId = id;
-    if (!same) {
-      audio.src = song.src;
-      audio.load();
+    const same = String(currentId) === String(id);
+    currentId = song.id;
+    const src = getSongSrc(song);
+    if (!same || audio.src !== src) {
+      // hanya ubah src jika berbeda — hindari reload tak perlu
+      // Gunakan path relatif; browser + SW akan handle cache hemat
+      const abs = new URL(src, location.href).href;
+      if (audio.src !== abs) {
+        audio.src = src;
+        audio.load();
+      }
     }
-    pushRecentlyPlayed(id);
+    pushRecentlyPlayed(song.id);
+    // untuk algoritma auto random cerdas
+    if (typeof SmartShuffle !== 'undefined' && SmartShuffle.incPlayCount) {
+      try { SmartShuffle.incPlayCount(song.id); } catch (e) {}
+    }
     emit('track');
     emit('progress');
+    emit('queue');
     if (autoplay) play();
     return true;
   }
@@ -83,7 +119,12 @@ const Player = (function () {
   function play() {
     if (!audio) return;
     if (currentId === null) {
-      if (queue.length) load(queue[0].id, true);
+      // jika ada queue, ambil dari queue dulu
+      if (typeof QueueModule !== 'undefined' && QueueModule.length()) {
+        const nid = QueueModule.shift();
+        if (nid !== null) { load(nid, true); return; }
+      }
+      if (library.length) load(library[0].id, true);
       return;
     }
     const p = audio.play();
@@ -101,60 +142,59 @@ const Player = (function () {
     else play();
   }
 
-  function indexOf(id) {
-    return queue.findIndex((s) => s.id === id);
+  function indexInLibrary(id) {
+    return library.findIndex((s) => String(s.id) === String(id));
   }
 
   function pickRandom(excludeId) {
-    if (queue.length === 0) return null;
-    if (queue.length === 1) return queue[0];
+    if (library.length === 0) return null;
+    if (library.length === 1) return library[0];
     let next = null;
     let guard = 0;
     do {
-      next = queue[Math.floor(Math.random() * queue.length)];
+      next = library[Math.floor(Math.random() * library.length)];
       guard++;
-    } while (next.id === excludeId && guard < 10);
+    } while (String(next.id) === String(excludeId) && guard < 10);
     return next;
   }
 
   function next(auto) {
-    if (!queue.length) return;
-    if (currentId === null) { load(queue[0].id, true); return; }
-    // Jika repeat-one dan ini auto-ended, di-handle di handleEnded. Tombol next manual tetap pindah.
-    if (!auto && repeatMode === 'one') {
-      // manual next saat repeat-one: tetap pindah sesuai shuffle/urutan
+    if (!library.length && !(typeof QueueModule !== 'undefined' && QueueModule.length())) return;
+    // 1) Jika queue ada, itu prioritas utama (sesuai spec playlist -> queue)
+    if (typeof QueueModule !== 'undefined' && QueueModule.length()) {
+      const nid = QueueModule.shift();
+      if (nid !== null) { load(nid, true); return; }
     }
+    if (currentId === null) { if (library.length) load(library[0].id, true); return; }
     if (shuffle) {
       const n = pickRandom(currentId);
       if (n) { load(n.id, true); return; }
     }
-    const i = indexOf(currentId);
-    if (i === -1) { load(queue[0].id, true); return; }
-    if (i < queue.length - 1) {
-      load(queue[i + 1].id, true);
+    const i = indexInLibrary(currentId);
+    if (i === -1) { if (library.length) load(library[0].id, true); return; }
+    if (i < library.length - 1) {
+      load(library[i + 1].id, true);
     } else {
-      // lagu terakhir
-      if (repeatMode === 'all') load(queue[0].id, true);
+      if (repeatMode === 'all') load(library[0].id, true);
       else if (auto) { pause(); if (audio) audio.currentTime = 0; emit('progress'); }
-      else load(queue[0].id, true);
+      else load(library[0].id, true);
     }
   }
 
   function prev() {
-    if (!queue.length || !audio) return;
-    // Jika sudah diputar >3 detik, kembali ke awal lagu (perilaku standar player).
+    if (!library.length || !audio) return;
     if (audio.currentTime > 3) {
       audio.currentTime = 0;
       emit('progress');
       return;
     }
-    if (currentId === null) { load(queue[0].id, true); return; }
+    if (currentId === null) { load(library[0].id, true); return; }
     if (shuffle) {
       const n = pickRandom(currentId);
       if (n) { load(n.id, true); return; }
     }
-    const i = indexOf(currentId);
-    if (i > 0) load(queue[i - 1].id, true);
+    const i = indexInLibrary(currentId);
+    if (i > 0) load(library[i - 1].id, true);
     else { audio.currentTime = 0; play(); }
   }
 
@@ -163,16 +203,21 @@ const Player = (function () {
       if (audio) { audio.currentTime = 0; play(); }
       return;
     }
+    // queue dulu
+    if (typeof QueueModule !== 'undefined' && QueueModule.length()) {
+      const nid = QueueModule.shift();
+      if (nid !== null) { load(nid, true); return; }
+    }
     if (shuffle) {
       const n = pickRandom(currentId);
       if (n) { load(n.id, true); return; }
     }
-    const i = indexOf(currentId);
+    const i = indexInLibrary(currentId);
     if (i === -1) return;
-    if (i < queue.length - 1) {
-      load(queue[i + 1].id, true);
+    if (i < library.length - 1) {
+      load(library[i + 1].id, true);
     } else {
-      if (repeatMode === 'all') load(queue[0].id, true);
+      if (repeatMode === 'all') load(library[0].id, true);
       else { isPlaying = false; emit('state'); }
     }
   }
@@ -219,13 +264,13 @@ const Player = (function () {
     return repeatMode;
   }
 
-  function setQueue(list) {
-    queue = Array.isArray(list) ? list.slice() : [];
+  function setLibrary(list) {
+    library = Array.isArray(list) ? list.slice() : [];
   }
 
   return {
     init, on, load, play, pause, toggle, next, prev,
     seek, seekByTime, setVolume, toggleMute,
-    toggleShuffle, cycleRepeat, current, getState, setQueue
+    toggleShuffle, cycleRepeat, current, getState, setLibrary, getSongSrc
   };
 })();

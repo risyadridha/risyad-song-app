@@ -1,0 +1,1 @@
+Versi 192kbps.

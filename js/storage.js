@@ -1,14 +1,33 @@
-/* Kirana Music — storage.js
- * Helper localStorage yang aman (tahan data corrupt/kosong).
- * Hanya menyimpan: likedSongs, recentlyPlayed, volume, shuffleState, repeatMode.
- */
+/* Risyad Music — storage.js — patched fixes 2,16,17 */
 const StorageKeys = {
-  LIKED: 'kirana.likedSongs',
-  RECENT: 'kirana.recentlyPlayed',
-  VOLUME: 'kirana.volume',
-  SHUFFLE: 'kirana.shuffleState',
-  REPEAT: 'kirana.repeatMode'
+  LIKED: 'risyad.likedSongs',
+  RECENT: 'risyad.recentlyPlayed',
+  VOLUME: 'risyad.volume',
+  SHUFFLE: 'risyad.shuffleState',
+  REPEAT: 'risyad.repeatMode',
+  PLAYLISTS: 'risyad.playlists.user',
+  AUDIO_QUALITY: 'risyad.audioQuality'
 };
+// Migrasi dari key lama kirana.* → risyad.* (tanpa hapus data user)
+(function migrateKeys(){
+  const map = {
+    'kirana.likedSongs':'risyad.likedSongs',
+    'kirana.recentlyPlayed':'risyad.recentlyPlayed',
+    'kirana.volume':'risyad.volume',
+    'kirana.shuffleState':'risyad.shuffleState',
+    'kirana.repeatMode':'risyad.repeatMode',
+    'kirana.playlists.user':'risyad.playlists.user',
+    'kirana.audioQuality':'risyad.audioQuality'
+  };
+  try{
+    Object.keys(map).forEach((oldK)=>{
+      const newK=map[oldK];
+      if(localStorage.getItem(newK)===null && localStorage.getItem(oldK)!==null){
+        localStorage.setItem(newK, localStorage.getItem(oldK));
+      }
+    });
+  }catch(e){}
+})();
 
 const MAX_RECENT = 20;
 
@@ -27,36 +46,54 @@ function setStorage(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (e) {
+    // QuotaExceededError → laporkan
+    if (e && e.name === 'QuotaExceededError') console.warn('localStorage quota exceeded', key);
     return false;
   }
 }
 
+// Fix 2: normalisasi ID → String agar 1 dan "1" tidak duplikat
+function normIds(ids){
+  if(!Array.isArray(ids)) return [];
+  const seen=new Set();
+  const out=[];
+  ids.forEach((x)=>{
+    const s=String(x);
+    if(s==='undefined'||s==='null'||s==='') return;
+    if(!seen.has(s)){ seen.add(s); out.push(isNaN(Number(s))? s : Number(s)); }
+  });
+  return out;
+}
+
 function getLikedSongs() {
   const v = getStorage(StorageKeys.LIKED, []);
-  return Array.isArray(v) ? v.filter((x) => typeof x === 'number') : [];
+  return Array.isArray(v) ? normIds(v) : [];
 }
 
 function saveLikedSongs(ids) {
-  const clean = Array.isArray(ids) ? ids.filter((x) => typeof x === 'number') : [];
-  return setStorage(StorageKeys.LIKED, clean);
+  const clean = normIds(ids);
+  const ok=setStorage(StorageKeys.LIKED, clean);
+  if(!ok && typeof UI!=='undefined'&&UI.toast) UI.toast('Gagal simpan Liked — storage penuh');
+  return ok;
 }
 
 function getRecentlyPlayed() {
   const v = getStorage(StorageKeys.RECENT, []);
-  return Array.isArray(v) ? v.filter((x) => typeof x === 'number').slice(0, MAX_RECENT) : [];
+  return Array.isArray(v) ? normIds(v).slice(0, MAX_RECENT) : [];
 }
 
 function saveRecentlyPlayed(ids) {
-  const clean = Array.isArray(ids) ? ids.filter((x) => typeof x === 'number').slice(0, MAX_RECENT) : [];
-  return setStorage(StorageKeys.RECENT, clean);
+  const clean = normIds(ids).slice(0, MAX_RECENT);
+  const ok=setStorage(StorageKeys.RECENT, clean);
+  if(!ok && typeof UI!=='undefined'&&UI.toast) UI.toast('Gagal simpan Recent — storage penuh');
+  return ok;
 }
 
 function pushRecentlyPlayed(id) {
-  if (typeof id !== 'number') return getRecentlyPlayed();
+  if (id === null || id === undefined) return getRecentlyPlayed();
   const cur = getRecentlyPlayed();
-  // Hindari duplikat berurutan: jika paling atas sama, tidak perlu update.
-  if (cur[0] === id) return cur;
-  const next = [id].concat(cur.filter((x) => x !== id)).slice(0, MAX_RECENT);
+  if (String(cur[0]) === String(id)) return cur;
+  const next = [id].concat(cur.filter((x) => String(x) !== String(id))).slice(0, MAX_RECENT);
   saveRecentlyPlayed(next);
   return next;
 }
@@ -90,4 +127,15 @@ function getRepeatMode() {
 function saveRepeatMode(mode) {
   const m = mode === 'all' || mode === 'one' ? mode : 'off';
   return setStorage(StorageKeys.REPEAT, m);
+}
+
+function getAudioQuality() {
+  const v = getStorage(StorageKeys.AUDIO_QUALITY, 'normal');
+  return v === 'saver' || v === 'high' ? v : 'normal';
+}
+function saveAudioQuality(q) {
+  const v = q === 'saver' || q === 'high' ? q : 'normal';
+  const ok=setStorage(StorageKeys.AUDIO_QUALITY, v);
+  if(!ok && typeof UI!=='undefined'&&UI.toast) UI.toast('Gagal simpan quality — storage penuh');
+  return ok;
 }
